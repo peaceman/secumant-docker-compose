@@ -1,0 +1,25 @@
+diamant:
+  baseUrl: fillme
+  auth:
+    username: fillme
+    password: fillme
+    tenant: fillme
+
+secutix:
+  baseUrl: fillme
+  auth:
+    username: fillme
+    password: fillme
+  exportQuery: fillme
+
+redis:
+  connectionUrl: redis://redis:6379
+
+aggregation:
+  operatorLedgerAccounts: {}
+  cardTypeLedgerAccounts: {}
+  cardTypeDocumentTypes: {}
+  ledgerAccountsWithVatRate: []
+  clearingAccount: fillme
+  taxCodeMapping: {}
+  postingPeriodOverrides: []

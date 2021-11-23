@@ -1,0 +1,89 @@
+version: "2"
+services:
+  db:
+    image: mysql:${MYSQL_VERSION:-8.0}
+    restart: unless-stopped
+    volumes:
+      - mysql_data:/var/lib/mysql
+    environment:
+      - MYSQL_DATABASE=${DB_NAME}
+      - MYSQL_USER=${DB_USER}
+      - MYSQL_PASSWORD=${DB_PASSWORD}
+      - MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD}
+
+  dbbackup:
+    image: databack/mysql-backup
+    restart: unless-stopped
+    environment:
+      DB_SERVER: db
+      DB_USER: root
+      DB_PASS: ${DB_ROOT_PASSWORD}
+      DB_DUMP_CRON: 23 0 * * *
+      DB_DUMP_TARGET: /backups
+      DB_DUMP_BY_SCHEMA: "true"
+      DB_NAMES: "${DB_NAME}"
+      MYSQLDUMP_OPTS: --single-transaction
+    depends_on:
+      - db
+    volumes:
+      - mysql_backups:/backups
+    user: "0"
+
+  rotate_backup:
+    build: rotate-backup
+    restart: unless-stopped
+    volumes:
+      - mysql_backups:/backups
+      - ./rotate-backups.ini:/etc/rotate-backups.ini
+    environment:
+      - CRON_SCHEDULE=23 1 * * *
+    command: rotate-backups
+
+  redis:
+    image: redis:${REDIS_VERSION:-6.2}
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    command: [
+      "redis-server",
+      "--save", "60", "1",
+      "--appendonly", "yes",
+      "--appendfsync", "everysec"
+    ]
+
+  secumant: &secumant_defaults
+    image: ${SECUMANT_DOCKER_IMAGE}
+    restart: "no"
+    volumes:
+      - ./config.yml:/app/config/local.yml
+    depends_on:
+      - db
+      - redis
+    environment:
+      DB_NAME:
+      DB_USER:
+      DB_PASSWORD:
+      DB_HOST: db
+      DB_PORT: 3306
+    entrypoint: ["wait-for", "db:3306", "--", "tini", "--", "node", "bin/secumant"]
+    command: ["--version"]
+
+  secumant_export:
+    <<: *secumant_defaults
+    restart: unless-stopped
+    command: ["services", "export-queue"]
+
+  secumant_import:
+    <<: *secumant_defaults
+    restart: unless-stopped
+    command: ["services", "import-queue"]
+
+  secumant_transform:
+    <<: *secumant_defaults
+    restart: unless-stopped
+    command: ["services", "transform-queue"]
+
+volumes:
+  mysql_data:
+  mysql_backups:
+  redis_data:
