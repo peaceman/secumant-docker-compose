@@ -83,6 +83,11 @@ services:
     restart: unless-stopped
     command: ["services", "transform-queue"]
 
+  secumant_report:
+    <<: *secumant_defaults
+    restart: unless-stopped
+    command: ["services", "report-queue"]
+
 volumes:
   mysql_data:
   mysql_backups:
